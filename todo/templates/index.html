@@ -1,0 +1,302 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ProTask Manager</title>
+
+  <style>
+    body {
+      font-family: "Poppins", sans-serif;
+      background: #f3f3ff;
+      margin: 0;
+      padding: 0;
+      transition: 0.3s ease;
+    }
+
+    /* DARK MODE */
+    body.dark {
+      background: #121212;
+      color: white;
+    }
+
+    .container {
+      max-width: 480px;
+      margin: 40px auto;
+      background: white;
+      padding: 25px;
+      border-radius: 18px;
+      box-shadow: 0 0 20px rgba(0,0,0,0.15);
+      transition: 0.3s ease;
+    }
+
+    body.dark .container {
+      background: #1e1e1e;
+    }
+
+    h1 {
+      text-align: center;
+      margin-bottom: 20px;
+      font-weight: 600;
+    }
+
+    .theme-btn {
+      position: absolute;
+      top: 20px;
+      right: 20px;
+      padding: 10px 18px;
+      border: none;
+      border-radius: 8px;
+      background: #6b4eff;
+      color: white;
+      cursor: pointer;
+      font-size: 14px;
+    }
+
+    .input-box {
+      display: flex;
+      gap: 10px;
+      margin-bottom: 20px;
+    }
+
+    .input-box input {
+      flex: 1;
+      padding: 10px;
+      border-radius: 8px;
+      border: 1px solid #bbb;
+      font-size: 15px;
+    }
+
+    body.dark .input-box input {
+      background: #2a2a2a;
+      color: white;
+      border: 1px solid #555;
+    }
+
+    .input-box button {
+      background: #6b4eff;
+      color: white;
+      padding: 10px 16px;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+    }
+
+    .task {
+      background: #f6f6ff;
+      padding: 12px;
+      border-radius: 10px;
+      margin: 10px 0;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      transition: 0.3s ease;
+    }
+
+    body.dark .task {
+      background: #2b2b2b;
+    }
+
+    .completed {
+      text-decoration: line-through;
+      color: gray;
+    }
+
+    .task input[type="text"] {
+      padding: 6px;
+      border-radius: 6px;
+      border: 1px solid #aaa;
+    }
+
+    body.dark .task input[type="text"] {
+      background: #222;
+      color: white;
+      border: 1px solid #666;
+    }
+
+    .btns button {
+      border: none;
+      padding: 6px 10px;
+      border-radius: 6px;
+      cursor: pointer;
+      margin-left: 6px;
+      font-size: 13px;
+    }
+
+    .edit-btn {
+      background: #ffd93d;
+    }
+
+    .save-btn {
+      background: #3ddc97;
+    }
+
+    .delete-btn {
+      background: #ff5b5b;
+      color: white;
+    }
+
+    .complete-btn {
+      background: #6b4eff;
+      color: white;
+    }
+
+    .undo-btn {
+      background: #444;
+      color: white;
+    }
+
+    .filter-box {
+      display: flex;
+      justify-content: center;
+      gap: 8px;
+      margin-bottom: 15px;
+    }
+
+    .filter-box button {
+      padding: 6px 14px;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+      background: #ddd;
+    }
+
+    body.dark .filter-box button {
+      background: #444;
+      color: white;
+    }
+
+    .empty {
+      text-align: center;
+      margin-top: 15px;
+      color: #777;
+    }
+  </style>
+</head>
+
+<body>
+
+  <button class="theme-btn" onclick="toggleTheme()">Toggle Theme</button>
+
+  <div class="container">
+    <h1>ProTask Manager</h1>
+
+    <div class="input-box">
+      <input id="taskInput" type="text" placeholder="Enter a new task..." />
+      <button onclick="addTask()">Add</button>
+    </div>
+
+    <div class="filter-box">
+      <button onclick="setFilter('all')">All</button>
+      <button onclick="setFilter('completed')">Completed</button>
+      <button onclick="setFilter('incomplete')">Incomplete</button>
+    </div>
+
+    <div id="taskList"></div>
+  </div>
+
+<script>
+  let tasks = [];
+  let filterType = "all";
+
+  function addTask() {
+    const input = document.getElementById("taskInput");
+    const text = input.value.trim();
+    if (!text) return;
+
+    tasks.push({
+      id: Date.now(),
+      text,
+      completed: false
+    });
+
+    input.value = "";
+    renderTasks();
+  }
+
+  function toggleTheme() {
+    document.body.classList.toggle("dark");
+  }
+
+  function setFilter(type) {
+    filterType = type;
+    renderTasks();
+  }
+
+  function deleteTask(id) {
+    tasks = tasks.filter(t => t.id !== id);
+    renderTasks();
+  }
+
+  function toggleComplete(id) {
+    tasks = tasks.map(t =>
+      t.id === id ? { ...t, completed: !t.completed } : t
+    );
+    renderTasks();
+  }
+
+  function startEdit(id) {
+    const taskItem = document.getElementById(`task-${id}`);
+    const textSpan = taskItem.querySelector(".task-text");
+    const btn = taskItem.querySelector(".edit-btn");
+
+    const currentText = textSpan.innerText;
+
+    textSpan.innerHTML = `<input id="edit-${id}" type="text" value="${currentText}">`;
+    btn.innerText = "Save";
+    btn.className = "save-btn";
+    btn.onclick = () => saveEdit(id);
+  }
+
+  function saveEdit(id) {
+    const newText = document.getElementById(`edit-${id}`).value;
+    tasks = tasks.map(t =>
+      t.id === id ? { ...t, text: newText } : t
+    );
+    renderTasks();
+  }
+
+  function renderTasks() {
+    const list = document.getElementById("taskList");
+    list.innerHTML = "";
+
+    let displayTasks = tasks;
+    if (filterType === "completed") {
+      displayTasks = tasks.filter(t => t.completed);
+    } else if (filterType === "incomplete") {
+      displayTasks = tasks.filter(t => !t.completed);
+    }
+
+    if (displayTasks.length === 0) {
+      list.innerHTML = `<p class="empty">No tasks available</p>`;
+      return;
+    }
+
+    displayTasks.forEach(t => {
+      const div = document.createElement("div");
+      div.className = "task";
+      div.id = `task-${t.id}`;
+
+      div.innerHTML = `
+        <span class="task-text ${t.completed ? "completed" : ""}">
+          ${t.text}
+        </span>
+
+        <div class="btns">
+          <button class="edit-btn" onclick="startEdit(${t.id})">Edit</button>
+          <button class="${t.completed ? "undo-btn" : "complete-btn"}" onclick="toggleComplete(${t.id})">
+            ${t.completed ? "Undo" : "Complete"}
+          </button>
+          <button class="delete-btn" onclick="deleteTask(${t.id})">Delete</button>
+        </div>
+      `;
+
+      list.appendChild(div);
+    });
+  }
+</script>
+
+</body>
+</html>
+
+
